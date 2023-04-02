@@ -4,6 +4,7 @@ const express = require("express");
 const morgan = require("morgan");
 const cors = require("cors");
 const Person = require("./models/person");
+const uniqueValidator = require("mongoose-unique-validator");
 
 const app = express();
 
@@ -49,7 +50,7 @@ app.delete("/api/persons/:id", (request, response, next) => {
 		});
 });
 
-app.post("/api/persons", (request, response) => {
+app.post("/api/persons", (request, response, next) => {
 	const body = request.body;
 
 	if (!body.name || !body.number) {
@@ -63,9 +64,11 @@ app.post("/api/persons", (request, response) => {
 		number: body.number,
 	});
 
-	person.save().then((personSaved) => {
-		response.json(personSaved);
-	});
+	person
+		.save()
+		.then((personSaved) => personSaved.toJSON())
+		.then((personSavedAndFormatted) => response.json(personSavedAndFormatted))
+		.catch((error) => next(error));
 });
 
 app.put("/api/persons/:id", (request, response, next) => {
@@ -75,8 +78,14 @@ app.put("/api/persons/:id", (request, response, next) => {
 		number: body.number,
 	};
 
-	Person.findByIdAndUpdate(request.params.id, person, { new: true })
-		.then((personUpdated) => response.json(personUpdated))
+	Person.findByIdAndUpdate(request.params.id, person, {
+		new: true,
+		runValidators: true,
+	})
+		.then((personUpdated) => personUpdated.toJSON())
+		.then((personUpdatedAndFormatted) =>
+			response.json(personUpdatedAndFormatted)
+		)
 		.catch((error) => next(error));
 });
 
@@ -90,7 +99,9 @@ const errorHandler = (error, request, response, next) => {
 	console.error(error);
 
 	if (error.name === "CastError") {
-		response.status(400).send({ error: "malformatted Id" });
+		return response.status(400).send({ error: "malformatted Id" });
+	} else if (error.name === "ValidationError") {
+		return response.status(400).json({ error: error.message });
 	}
 
 	next(error);
