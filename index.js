@@ -1,4 +1,3 @@
-const { response, request } = require("express");
 require("dotenv").config();
 const express = require("express");
 const morgan = require("morgan");
@@ -11,7 +10,7 @@ app.use(express.json());
 app.use(cors());
 app.use(express.static("build"));
 
-morgan.token("bodyContent", (req, res) => JSON.stringify(req.body));
+morgan.token("bodyContent", (req) => JSON.stringify(req.body));
 
 app.use(
 	morgan(
@@ -41,7 +40,7 @@ app.get("/api/persons/:id", (request, response) => {
 
 app.delete("/api/persons/:id", (request, response, next) => {
 	Person.findByIdAndRemove(request.params.id)
-		.then((result) => {
+		.then(() => {
 			response.status(204).end();
 		})
 		.catch((error) => {
